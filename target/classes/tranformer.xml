@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <db:mysql-config name="MySQL_Configuration" host="localhost" port="3306" user="root" password="Welcome123" database="football" doc:name="MySQL Configuration"/>
+    <flow name="tranformerFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/transformer" doc:name="HTTP"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from plaers;]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\list_map.dwl"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	"Player":payload groupBy $.player_gear_sponsors  map {
+		($$):$.player_name distinctBy $.player_name,
+		"player_appearances":$.player_appearances distinctBy $.player_appearances,
+		"player_age":$.player_age distinctBy $.player_age,
+		"olayer_goal":$.player_goal distinctBy $.player_goal,
+		"player_short_Name":$.player_shortName distinctBy $.player_shortName,
+		"player_gear_sponsors":$.player_gear_sponsors distinctBy $.player_gear_sponsors 
+		}
+	
+}]]></dw:set-payload>
+        </dw:transform-message>
+        <choice-exception-strategy doc:name="tranformerChoice_Exception_Strategy">
+            <rollback-exception-strategy when="#[exception.causeMatches('com.mysql.jdbc.exceptions.jdbc4.MySQLSyntaxErrorException')]" doc:name="Rollback Exception Strategy">
+                <set-payload value="beta galat hai" doc:name="Set Payload"/>
+            </rollback-exception-strategy>
+        </choice-exception-strategy>
+    </flow>
+
+</mule>
